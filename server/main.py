@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from pydantic import BaseModel
+from datetime import datetime, timedelta
 from mock_data import inventory_items, orders, demand_forecasts, backlog_items, spending_summary, monthly_spending, category_spending, recent_transactions, purchase_orders
 
 app = FastAPI(title="Factory Inventory Management System")
@@ -303,6 +304,44 @@ def get_monthly_trends():
     result = list(months.values())
     result.sort(key=lambda x: x['month'])
     return result
+
+class RestockingOrderRequest(BaseModel):
+    items: List[dict]   # [{sku, name, quantity, unit_price, trend}]
+    total_value: float
+    warehouse: Optional[str] = None
+
+
+@app.post("/api/restocking-orders", response_model=Order)
+def create_restocking_order(request: RestockingOrderRequest):
+    new_id = str(max(int(o["id"]) for o in orders) + 1) if orders else "1"
+    order_number = f"RST-{datetime.now().strftime('%Y-%m-%d')}-{new_id.zfill(4)}"
+    order_date = datetime.now().isoformat()
+
+    # Lead time: increasing=7 days (urgent), stable=14, decreasing=30.
+    # Use the shortest lead time across all selected items (most urgent wins).
+    lead_map = {"increasing": 7, "stable": 14, "decreasing": 30}
+    lead_days = min(
+        lead_map.get(item.get("trend", "stable"), 14)
+        for item in request.items
+    ) if request.items else 14
+    expected_delivery = (datetime.now() + timedelta(days=lead_days)).isoformat()
+
+    new_order = {
+        "id": new_id,
+        "order_number": order_number,
+        "customer": "Internal Restocking",
+        "items": request.items,
+        "status": "Restocking",
+        "order_date": order_date,
+        "expected_delivery": expected_delivery,
+        "total_value": request.total_value,
+        "actual_delivery": None,
+        "warehouse": request.warehouse,
+        "category": None
+    }
+    orders.append(new_order)
+    return new_order
+
 
 if __name__ == "__main__":
     import uvicorn

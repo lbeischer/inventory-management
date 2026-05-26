@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Architecture — Factory Inventory Management System</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 48px 32px;
+      line-height: 1.5;
+    }
+    .page { max-width: 1060px; margin: 0 auto; display: flex; flex-direction: column; gap: 52px; }
+    .page-header { border-bottom: 1px solid #1e293b; padding-bottom: 24px; }
+    .page-header h1 { font-size: 1.6rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.02em; }
+    .page-header p { font-size: 0.875rem; color: #64748b; margin-top: 4px; }
+    .section-label {
+      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.12em; color: #475569; margin-bottom: 18px;
+    }
+
+    /* ── Tech stack badges ── */
+    .badges { display: flex; flex-wrap: wrap; gap: 8px; }
+    .badge {
+      display: flex; flex-direction: column;
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 8px; padding: 10px 14px; min-width: 120px;
+    }
+    .badge-role { font-size: 0.62rem; color: #475569; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px; }
+    .badge-name { font-size: 0.85rem; font-weight: 600; color: #e2e8f0; }
+    .badge-ver  { font-size: 0.7rem; color: #64748b; margin-top: 1px; }
+    .badge.blue  { border-top: 2px solid #3b82f6; }
+    .badge.green { border-top: 2px solid #22c55e; }
+    .badge.yellow{ border-top: 2px solid #eab308; }
+    .badge.slate { border-top: 2px solid #64748b; }
+
+    /* ── SVG diagrams ── */
+    svg { overflow: visible; display: block; }
+    .diagram-wrap { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 32px; }
+
+    /* ── API table ── */
+    .ep-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .ep-table th {
+      text-align: left; padding: 8px 12px;
+      font-size: 0.62rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: #475569; border-bottom: 1px solid #334155;
+    }
+    .ep-table td { padding: 7px 12px; border-bottom: 1px solid #1e293b; vertical-align: middle; }
+    .ep-table tr:last-child td { border-bottom: none; }
+    .ep-table tr:hover td { background: #1e293b; }
+    .method {
+      display: inline-block; font-family: monospace; font-size: 0.65rem; font-weight: 700;
+      padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+    }
+    .get  { background: #1e3a5f; color: #60a5fa; }
+    .post { background: #14532d; color: #4ade80; }
+    .ep-path { font-family: monospace; color: #cbd5e1; }
+    .ep-note { color: #475569; font-size: 0.72rem; }
+    .table-wrap { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 24px; }
+
+    /* ── Key decisions ── */
+    .decisions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .decision {
+      background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+      padding: 14px 16px; font-size: 0.8rem;
+    }
+    .decision .icon { font-weight: 700; margin-right: 6px; }
+    .pro  .icon { color: #22c55e; }
+    .con  .icon { color: #ef4444; }
+    .decision .text { color: #94a3b8; }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <h1>System Architecture</h1>
+    <p>Factory Inventory Management System &mdash; Vue 3 + FastAPI + In-Memory JSON</p>
+  </div>
+
+  <!-- Tech Stack -->
+  <div>
+    <div class="section-label">Tech Stack</div>
+    <div class="badges">
+      <div class="badge blue"><div class="badge-role">Framework</div><div class="badge-name">Vue 3</div><div class="badge-ver">v3.4 &middot; Composition API</div></div>
+      <div class="badge blue"><div class="badge-role">Build Tool</div><div class="badge-name">Vite</div><div class="badge-ver">v5.2 &middot; Port 3000</div></div>
+      <div class="badge blue"><div class="badge-role">Routing</div><div class="badge-name">Vue Router</div><div class="badge-ver">v4.3 &middot; HTML5 history</div></div>
+      <div class="badge blue"><div class="badge-role">HTTP Client</div><div class="badge-name">Axios</div><div class="badge-ver">v1.6 &middot; via api.js</div></div>
+      <div class="badge green"><div class="badge-role">Backend</div><div class="badge-name">FastAPI</div><div class="badge-ver">Python &middot; Port 8001</div></div>
+      <div class="badge green"><div class="badge-role">Validation</div><div class="badge-name">Pydantic v2</div><div class="badge-ver">Request &amp; response models</div></div>
+      <div class="badge green"><div class="badge-role">ASGI Server</div><div class="badge-name">Uvicorn</div><div class="badge-ver">uv package manager</div></div>
+      <div class="badge yellow"><div class="badge-role">Data</div><div class="badge-name">JSON Files</div><div class="badge-ver">In-memory &middot; No DB</div></div>
+      <div class="badge slate"><div class="badge-role">i18n</div><div class="badge-name">Custom (en/ja)</div><div class="badge-ver">useI18n composable</div></div>
+    </div>
+  </div>
+
+  <!-- System Architecture Diagram -->
+  <div>
+    <div class="section-label">System Architecture</div>
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 980 420" width="100%" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#3b82f6"/>
+          </marker>
+          <marker id="arrow-blue-left" markerWidth="8" markerHeight="8" refX="2" refY="3" orient="auto">
+            <path d="M8,0 L8,6 L0,3 z" fill="#3b82f6"/>
+          </marker>
+          <marker id="arrow-yellow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#eab308"/>
+          </marker>
+        </defs>
+
+        <!-- ── Frontend box ── -->
+        <rect x="10" y="10" width="280" height="400" rx="10" fill="#0f172a" stroke="#3b82f6" stroke-width="1.5"/>
+        <rect x="10" y="10" width="280" height="38" rx="10" fill="#1e3a5f"/>
+        <rect x="10" y="30" width="280" height="18" fill="#1e3a5f"/>
+        <text x="150" y="34" text-anchor="middle" fill="#93c5fd" font-size="11" font-weight="700" letter-spacing="1" font-family="sans-serif">FRONTEND — PORT 3000</text>
+
+        <!-- Frontend content -->
+        <text x="30" y="70" fill="#475569" font-size="9" font-weight="700" letter-spacing="1" font-family="sans-serif">VIEWS</text>
+        <line x1="30" y1="74" x2="270" y2="74" stroke="#1e293b" stroke-width="1"/>
+        <text x="30" y="90" fill="#94a3b8" font-size="11" font-family="sans-serif">Dashboard</text>
+        <text x="30" y="107" fill="#94a3b8" font-size="11" font-family="sans-serif">Inventory</text>
+        <text x="30" y="124" fill="#94a3b8" font-size="11" font-family="sans-serif">Orders</text>
+        <text x="155" y="90" fill="#94a3b8" font-size="11" font-family="sans-serif">Demand</text>
+        <text x="155" y="107" fill="#94a3b8" font-size="11" font-family="sans-serif">Spending</text>
+        <text x="155" y="124" fill="#94a3b8" font-size="11" font-family="sans-serif">Reports</text>
+
+        <text x="30" y="148" fill="#475569" font-size="9" font-weight="700" letter-spacing="1" font-family="sans-serif">COMPONENTS</text>
+        <line x1="30" y1="152" x2="270" y2="152" stroke="#1e293b" stroke-width="1"/>
+        <text x="30" y="168" fill="#94a3b8" font-size="11" font-family="sans-serif">FilterBar</text>
+        <text x="30" y="185" fill="#94a3b8" font-size="11" font-family="sans-serif">*DetailModal (x4)</text>
+        <text x="30" y="202" fill="#94a3b8" font-size="11" font-family="sans-serif">ProfileMenu</text>
+        <text x="155" y="168" fill="#94a3b8" font-size="11" font-family="sans-serif">TasksModal</text>
+        <text x="155" y="185" fill="#94a3b8" font-size="11" font-family="sans-serif">LanguageSwitcher</text>
+
+        <text x="30" y="226" fill="#475569" font-size="9" font-weight="700" letter-spacing="1" font-family="sans-serif">COMPOSABLES</text>
+        <line x1="30" y1="230" x2="270" y2="230" stroke="#1e293b" stroke-width="1"/>
+        <!-- useFilters highlighted box -->
+        <rect x="25" y="238" width="255" height="30" rx="5" fill="#1e3a5f" stroke="#3b82f6" stroke-width="1"/>
+        <text x="152" y="257" text-anchor="middle" fill="#93c5fd" font-size="11" font-weight="600" font-family="sans-serif">useFilters — singleton filter state</text>
+        <text x="30" y="288" fill="#94a3b8" font-size="11" font-family="sans-serif">useAuth</text>
+        <text x="155" y="288" fill="#94a3b8" font-size="11" font-family="sans-serif">useI18n (en / ja)</text>
+
+        <text x="30" y="312" fill="#475569" font-size="9" font-weight="700" letter-spacing="1" font-family="sans-serif">API CLIENT</text>
+        <line x1="30" y1="316" x2="270" y2="316" stroke="#1e293b" stroke-width="1"/>
+        <rect x="25" y="324" width="255" height="30" rx="5" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+        <text x="152" y="343" text-anchor="middle" fill="#cbd5e1" font-size="11" font-family="monospace">api.js (axios)</text>
+        <text x="30" y="378" fill="#94a3b8" font-size="11" font-family="sans-serif">Vue Router — 6 routes</text>
+        <text x="30" y="395" fill="#94a3b8" font-size="11" font-family="sans-serif">HTML5 history mode</text>
+
+        <!-- ── Arrow: Frontend → Backend ── -->
+        <line x1="292" y1="180" x2="378" y2="180" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow-blue)"/>
+        <line x1="378" y1="210" x2="292" y2="210" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrow-blue-left)"/>
+        <rect x="297" y="160" width="76" height="16" rx="3" fill="#0f172a"/>
+        <text x="335" y="172" text-anchor="middle" fill="#3b82f6" font-size="10" font-weight="600" font-family="sans-serif">axios GET</text>
+        <rect x="297" y="212" width="76" height="16" rx="3" fill="#0f172a"/>
+        <text x="335" y="224" text-anchor="middle" fill="#3b82f6" font-size="10" font-weight="600" font-family="sans-serif">JSON resp</text>
+
+        <!-- ── Backend box ── -->
+        <rect x="380" y="10" width="280" height="400" rx="10" fill="#0f172a" stroke="#22c55e" stroke-width="1.5"/>
+        <rect x="380" y="10" width="280" height="38" rx="10" fill="#14532d"/>
+        <rect x="380" y="30" width="280" height="18" fill="#14532d"/>
+        <text x="520" y="34" text-anchor="middle" fill="#86efac" font-size="11" font-weight="700" letter-spacing="1" font-family="sans-serif">BACKEND — PORT 8001</text>
+
+        <text x="400" y="70" fill="#475569" font-size="9" font-weight="700" letter-spacing="1" font-family="sans-serif">ENDPOINTS (14)</text>
+        <line x1="400" y1="74" x2="640" y2="74" stroke="#1e293b" stroke-width="1"/>
+        <text x="400" y="91" fill="#94a3b8" font-size="11" font-family="monospace">GET /api/inventory</text>
+        <text x="400" y="108" fill="#94a3b8" font-size="11" font-family="monospace">GET /api/orders</text>
+        <text x="400" y="125" fill="#94a3b8" font-size="11" font-family="monospace">GET /api/demand</text>
+        <text x="400" y="142" fill="#94a3b8" font-size="11" font-family="monospace">GET /api/backlog</text>
+        <text x="400" y="159" fill="#94a3b8" font-size="11" font-family="monospace">GET /api/dashboard/summary</text>
+        <text x="400" y="176" fill="#94a3b8" font-size="11" font-family="monospace">GET /api/spending/*</text>
+        <text x="400" y="193" fill="#94a3b8" font-size="11" font-family="monospace">GET /api/reports/*</text>
+        <text x="400" y="210" fill="#94a3b8" font-size="11" font-family="monospace">POST /api/purchase-orders</text>
+
+        <text x="400" y="234" fill="#475569" font-size="9" font-weight="700" letter-spacing="1" font-family="sans-serif">FILTERING</text>
+        <line x1="400" y1="238" x2="640" y2="238" stroke="#1e293b" stroke-width="1"/>
+        <rect x="395" y="245" width="255" height="28" rx="5" fill="#14532d" stroke="#22c55e" stroke-width="1"/>
+        <text x="522" y="263" text-anchor="middle" fill="#86efac" font-size="11" font-family="monospace">apply_filters(warehouse/category/status)</text>
+        <rect x="395" y="281" width="255" height="28" rx="5" fill="#14532d" stroke="#22c55e" stroke-width="1"/>
+        <text x="522" y="299" text-anchor="middle" fill="#86efac" font-size="11" font-family="monospace">filter_by_month(month | Q1-Q4)</text>
+
+        <text x="400" y="330" fill="#475569" font-size="9" font-weight="700" letter-spacing="1" font-family="sans-serif">VALIDATION</text>
+        <line x1="400" y1="334" x2="640" y2="334" stroke="#1e293b" stroke-width="1"/>
+        <text x="400" y="351" fill="#94a3b8" font-size="11" font-family="sans-serif">Pydantic models (request + response)</text>
+        <text x="400" y="368" fill="#94a3b8" font-size="11" font-family="sans-serif">CORS: all origins (dev)</text>
+        <text x="400" y="385" fill="#94a3b8" font-size="11" font-family="sans-serif">Swagger UI at /docs</text>
+
+        <!-- ── Arrow: Backend → Data ── -->
+        <line x1="662" y1="195" x2="698" y2="195" stroke="#eab308" stroke-width="1.5" marker-end="url(#arrow-yellow)"/>
+        <rect x="663" y="178" width="34" height="16" rx="3" fill="#0f172a"/>
+        <text x="680" y="190" text-anchor="middle" fill="#eab308" font-size="9" font-weight="600" font-family="sans-serif">load</text>
+        <rect x="660" y="195" width="40" height="16" rx="3" fill="#0f172a"/>
+        <text x="680" y="207" text-anchor="middle" fill="#eab308" font-size="9" font-family="sans-serif">startup</text>
+
+        <!-- ── Data box ── -->
+        <rect x="700" y="10" width="270" height="400" rx="10" fill="#0f172a" stroke="#eab308" stroke-width="1.5"/>
+        <rect x="700" y="10" width="270" height="38" rx="10" fill="#422006"/>
+        <rect x="700" y="30" width="270" height="18" fill="#422006"/>
+        <text x="835" y="34" text-anchor="middle" fill="#fde68a" font-size="11" font-weight="700" letter-spacing="1" font-family="sans-serif">DATA — server/data/</text>
+
+        <text x="720" y="70" fill="#475569" font-size="9" font-weight="700" letter-spacing="1" font-family="sans-serif">JSON FILES</text>
+        <line x1="720" y1="74" x2="950" y2="74" stroke="#1e293b" stroke-width="1"/>
+
+        <!-- File items -->
+        <rect x="715" y="82" width="240" height="24" rx="4" fill="#1e293b"/>
+        <text x="727" y="98" fill="#fbbf24" font-size="10" font-family="monospace">inventory.json</text>
+        <text x="860" y="98" fill="#475569" font-size="10" font-family="sans-serif">SKUs, stock, cost</text>
+
+        <rect x="715" y="112" width="240" height="24" rx="4" fill="#1e293b"/>
+        <text x="727" y="128" fill="#fbbf24" font-size="10" font-family="monospace">orders.json</text>
+        <text x="860" y="128" fill="#475569" font-size="10" font-family="sans-serif">status, value</text>
+
+        <rect x="715" y="142" width="240" height="24" rx="4" fill="#1e293b"/>
+        <text x="727" y="158" fill="#fbbf24" font-size="10" font-family="monospace">demand_forecasts.json</text>
+        <text x="900" y="158" fill="#475569" font-size="10" font-family="sans-serif">trends</text>
+
+        <rect x="715" y="172" width="240" height="24" rx="4" fill="#1e293b"/>
+        <text x="727" y="188" fill="#fbbf24" font-size="10" font-family="monospace">backlog_items.json</text>
+        <text x="900" y="188" fill="#475569" font-size="10" font-family="sans-serif">delays</text>
+
+        <rect x="715" y="202" width="240" height="24" rx="4" fill="#1e293b"/>
+        <text x="727" y="218" fill="#fbbf24" font-size="10" font-family="monospace">purchase_orders.json</text>
+        <text x="900" y="218" fill="#475569" font-size="10" font-family="sans-serif">POs</text>
+
+        <rect x="715" y="232" width="240" height="24" rx="4" fill="#1e293b"/>
+        <text x="727" y="248" fill="#fbbf24" font-size="10" font-family="monospace">spending.json</text>
+        <text x="860" y="248" fill="#475569" font-size="10" font-family="sans-serif">cost summary</text>
+
+        <rect x="715" y="262" width="240" height="24" rx="4" fill="#1e293b"/>
+        <text x="727" y="278" fill="#fbbf24" font-size="10" font-family="monospace">transactions.json</text>
+        <text x="900" y="278" fill="#475569" font-size="10" font-family="sans-serif">ledger</text>
+
+        <text x="720" y="316" fill="#475569" font-size="9" font-weight="700" letter-spacing="1" font-family="sans-serif">CHARACTERISTICS</text>
+        <line x1="720" y1="320" x2="950" y2="320" stroke="#1e293b" stroke-width="1"/>
+        <text x="720" y="337" fill="#94a3b8" font-size="11" font-family="sans-serif">Loaded once at server startup</text>
+        <text x="720" y="354" fill="#94a3b8" font-size="11" font-family="sans-serif">Held in module-level Python lists</text>
+        <text x="720" y="371" fill="#94a3b8" font-size="11" font-family="sans-serif">Writes are in-memory only</text>
+        <text x="720" y="388" fill="#94a3b8" font-size="11" font-family="sans-serif">Restarts reload from disk</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Filter Data Flow -->
+  <div>
+    <div class="section-label">Filter Data Flow</div>
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 980 520" width="100%" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arr-down" markerWidth="8" markerHeight="8" refX="4" refY="6" orient="auto">
+            <path d="M1,1 L4,7 L7,1" fill="none" stroke="#334155" stroke-width="1.5"/>
+          </marker>
+        </defs>
+
+        <!-- Swimlane headers -->
+        <rect x="0" y="0" width="310" height="28" rx="5" fill="#1e3a5f"/>
+        <text x="155" y="18" text-anchor="middle" fill="#93c5fd" font-size="11" font-weight="700" letter-spacing="1" font-family="sans-serif">FRONTEND</text>
+
+        <rect x="335" y="0" width="310" height="28" rx="5" fill="#14532d"/>
+        <text x="490" y="18" text-anchor="middle" fill="#86efac" font-size="11" font-weight="700" letter-spacing="1" font-family="sans-serif">BACKEND</text>
+
+        <rect x="670" y="0" width="310" height="28" rx="5" fill="#422006"/>
+        <text x="825" y="18" text-anchor="middle" fill="#fde68a" font-size="11" font-weight="700" letter-spacing="1" font-family="sans-serif">DATA</text>
+
+        <!-- Vertical lane dividers -->
+        <line x1="320" y1="28" x2="320" y2="520" stroke="#334155" stroke-width="1" stroke-dasharray="4,4"/>
+        <line x1="655" y1="28" x2="655" y2="520" stroke="#334155" stroke-width="1" stroke-dasharray="4,4"/>
+
+        <!-- ── Step 1 ── -->
+        <rect x="20" y="50" width="270" height="56" rx="8" fill="#1e293b" stroke="#3b82f6" stroke-width="1.5"/>
+        <text x="155" y="72" text-anchor="middle" fill="#93c5fd" font-size="12" font-weight="600" font-family="sans-serif">1. User changes FilterBar</text>
+        <text x="155" y="90" text-anchor="middle" fill="#64748b" font-size="10.5" font-family="sans-serif">useFilters ref updates (singleton)</text>
+
+        <line x1="155" y1="106" x2="155" y2="126" stroke="#334155" stroke-width="1.5" marker-end="url(#arr-down)"/>
+
+        <!-- ── Step 2 ── -->
+        <rect x="20" y="128" width="270" height="56" rx="8" fill="#1e293b" stroke="#3b82f6" stroke-width="1.5"/>
+        <text x="155" y="150" text-anchor="middle" fill="#93c5fd" font-size="12" font-weight="600" font-family="sans-serif">2. View watcher fires</text>
+        <text x="155" y="168" text-anchor="middle" fill="#64748b" font-size="10.5" font-family="sans-serif">calls api.js with getCurrentFilters()</text>
+
+        <line x1="155" y1="184" x2="155" y2="204" stroke="#334155" stroke-width="1.5" marker-end="url(#arr-down)"/>
+
+        <!-- ── Step 3 ── -->
+        <rect x="20" y="206" width="270" height="66" rx="8" fill="#1e293b" stroke="#3b82f6" stroke-width="1.5"/>
+        <text x="155" y="228" text-anchor="middle" fill="#93c5fd" font-size="12" font-weight="600" font-family="sans-serif">3. api.js fires HTTP request</text>
+        <text x="155" y="246" text-anchor="middle" fill="#64748b" font-size="10.5" font-family="sans-serif">builds URLSearchParams, skips "all"</text>
+        <text x="155" y="262" text-anchor="middle" fill="#475569" font-size="10" font-family="monospace">GET /api/orders?warehouse=WH-01</text>
+
+        <!-- Arrow crossing lanes: step 3 → step 4 -->
+        <line x1="290" y1="239" x2="355" y2="239" stroke="#3b82f6" stroke-width="1.5"/>
+        <polygon points="355,235 363,239 355,243" fill="#3b82f6"/>
+
+        <!-- ── Step 4 ── -->
+        <rect x="365" y="206" width="270" height="66" rx="8" fill="#1e293b" stroke="#22c55e" stroke-width="1.5"/>
+        <text x="500" y="228" text-anchor="middle" fill="#86efac" font-size="12" font-weight="600" font-family="sans-serif">4. FastAPI filters data</text>
+        <text x="500" y="246" text-anchor="middle" fill="#64748b" font-size="10.5" font-family="monospace">apply_filters()</text>
+        <text x="500" y="262" text-anchor="middle" fill="#64748b" font-size="10.5" font-family="monospace">filter_by_month()</text>
+
+        <!-- Arrow: step 4 reads data -->
+        <line x1="635" y1="239" x2="688" y2="239" stroke="#eab308" stroke-width="1.5"/>
+        <polygon points="688,235 696,239 688,243" fill="#eab308"/>
+
+        <!-- Data box -->
+        <rect x="698" y="206" width="268" height="66" rx="8" fill="#1e293b" stroke="#eab308" stroke-width="1.5"/>
+        <text x="832" y="228" text-anchor="middle" fill="#fde68a" font-size="12" font-weight="600" font-family="sans-serif">In-memory JSON lists</text>
+        <text x="832" y="246" text-anchor="middle" fill="#64748b" font-size="10.5" font-family="sans-serif">inventory_items, orders,</text>
+        <text x="832" y="262" text-anchor="middle" fill="#64748b" font-size="10.5" font-family="sans-serif">backlog_items, ...</text>
+
+        <line x1="500" y1="272" x2="500" y2="292" stroke="#334155" stroke-width="1.5" marker-end="url(#arr-down)"/>
+
+        <!-- ── Step 5 ── -->
+        <rect x="365" y="294" width="270" height="56" rx="8" fill="#1e293b" stroke="#22c55e" stroke-width="1.5"/>
+        <text x="500" y="316" text-anchor="middle" fill="#86efac" font-size="12" font-weight="600" font-family="sans-serif">5. Pydantic validates + serializes</text>
+        <text x="500" y="334" text-anchor="middle" fill="#64748b" font-size="10.5" font-family="sans-serif">response_model enforces shape → JSON</text>
+
+        <!-- Arrow crossing back: step 5 → step 6 -->
+        <line x1="365" y1="322" x2="300" y2="322" stroke="#3b82f6" stroke-width="1.5"/>
+        <polygon points="300,318 292,322 300,326" fill="#3b82f6"/>
+
+        <!-- ── Step 6 ── -->
+        <rect x="20" y="294" width="270" height="56" rx="8" fill="#1e293b" stroke="#a855f7" stroke-width="1.5"/>
+        <text x="155" y="316" text-anchor="middle" fill="#d8b4fe" font-size="12" font-weight="600" font-family="sans-serif">6. Vue re-renders</text>
+        <text x="155" y="334" text-anchor="middle" fill="#64748b" font-size="10.5" font-family="sans-serif">ref updates → computed recalculates</text>
+
+        <!-- Bottom labels -->
+        <text x="155" y="395" text-anchor="middle" fill="#475569" font-size="10" font-family="sans-serif">Reactivity: refs hold raw data</text>
+        <text x="155" y="412" text-anchor="middle" fill="#475569" font-size="10" font-family="sans-serif">computed properties derive charts/tables</text>
+
+        <text x="500" y="395" text-anchor="middle" fill="#475569" font-size="10" font-family="sans-serif">Only non-"all" filters sent as params</text>
+        <text x="500" y="412" text-anchor="middle" fill="#475569" font-size="10" font-family="sans-serif">Quarters: Q1-2025 → [2025-01, 02, 03]</text>
+
+        <text x="832" y="395" text-anchor="middle" fill="#475569" font-size="10" font-family="sans-serif">7 JSON files, loaded once</text>
+        <text x="832" y="412" text-anchor="middle" fill="#475569" font-size="10" font-family="sans-serif">filtered copies, originals unchanged</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- API Endpoints -->
+  <div>
+    <div class="section-label">API Endpoints</div>
+    <div class="table-wrap">
+      <table class="ep-table">
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Path</th>
+            <th>Filters / Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="method get">GET</span></td><td class="ep-path">/api/inventory</td><td class="ep-note">warehouse, category</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep-path">/api/inventory/{id}</td><td class="ep-note">single item by ID</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep-path">/api/orders</td><td class="ep-note">warehouse, category, status, month</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep-path">/api/orders/{id}</td><td class="ep-note">single order by ID</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep-path">/api/demand</td><td class="ep-note">no filters — all forecasts</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep-path">/api/backlog</td><td class="ep-note">includes has_purchase_order flag</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep-path">/api/dashboard/summary</td><td class="ep-note">warehouse, category, status, month</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep-path">/api/spending/summary</td><td class="ep-note">no filters</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep-path">/api/spending/monthly</td><td class="ep-note">no filters</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep-path">/api/spending/categories</td><td class="ep-note">no filters</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep-path">/api/spending/transactions</td><td class="ep-note">no filters</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep-path">/api/reports/quarterly</td><td class="ep-note">derived from orders data</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep-path">/api/reports/monthly-trends</td><td class="ep-note">derived from orders data</td></tr>
+          <tr><td><span class="method post">POST</span></td><td class="ep-path">/api/purchase-orders</td><td class="ep-note">create PO for backlog item</td></tr>
+          <tr><td><span class="method get">GET</span></td><td class="ep-path">/api/purchase-orders/{backlogItemId}</td><td class="ep-note">lookup PO by backlog item</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Key Design Decisions -->
+  <div>
+    <div class="section-label">Design Decisions</div>
+    <div class="decisions">
+      <div class="decision pro"><span class="icon">+</span><span class="text">No database — zero setup, instant startup, no migrations</span></div>
+      <div class="decision pro"><span class="icon">+</span><span class="text">Filter state in composable singleton — no prop drilling across views</span></div>
+      <div class="decision pro"><span class="icon">+</span><span class="text">All API calls centralized in api.js — one place to update base URL or add auth headers</span></div>
+      <div class="decision pro"><span class="icon">+</span><span class="text">Pydantic response_model on every endpoint — shape enforced automatically</span></div>
+      <div class="decision con"><span class="icon">-</span><span class="text">Writes (tasks, purchase orders) do not persist across server restarts</span></div>
+      <div class="decision con"><span class="icon">-</span><span class="text">No authentication — CORS open to all origins, demo only</span></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

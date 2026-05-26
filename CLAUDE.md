@@ -67,6 +67,9 @@ npm install && npm run dev
 - Data: `server/data/*.json`
 - Styles: `client/src/App.vue`
 
+## Code Style
+- Always document non-obvious logic changes with a short inline comment explaining the WHY
+
 ## Design System
 - Colors: Slate/gray (#0f172a, #64748b, #e2e8f0)
 - Status: green/blue/yellow/red
